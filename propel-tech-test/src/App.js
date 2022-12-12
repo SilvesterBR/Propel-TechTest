@@ -32,66 +32,66 @@ const testData = [
 
 function App() {
 
-	const [searchValue, setSearchValue] = useState("platt");
-	
-	const parseData = [
-		{identifier: "Name", values : testData.map(data => `${data.first_name[0]}.${data.last_name}`)},
-		{identifier: "Email", values : testData.map(data => `${data.email}`)},
-	]
-
-
-	const [userInformation, setUserInformation] = useState(parseData)
+	const defaultUsers = testData;
+	const [searchValue, setSearchValue] = useState("")
+	const [users, setUsers] = useState(testData)
 
 	return (
 		<div className="App">
 			<h1>Welcome to Propel</h1>
 			<div className="content">
 				<label className='search-box' htmlFor="search-box">Search:</label>
-				<input className='input-box' id='search-box' placeholder='Name' type="text" onChange={(e) => setSearchValue(e.target.value)}/>
+				<input className='input-box' id='search-box' placeholder='Name' type="text" onChange={(e) => {
+					if(e.target.value){
+						setUsers(defaultUsers.filter(user => Object.values(user).find(userField => userField.includes(e.target.value))))
+					}else{
+						setUsers(defaultUsers)
+					}
+
+				}}/>
 				<div className="data">
-					<UserList data={userInformation} searchValue={searchValue}></UserList>
+					<UserData 
+						keyValue={["Name", "Email"]} 
+						values={users.map(user => [`${user.first_name[0]}.${user.last_name}`, user.email])} 
+						searchTerm={searchValue}
+					/>
 				</div>
 			</div>
 		</div>
 	);
 }
 
-function UserList({data, searchValue}){
-
-	const [userData, setUserData] = useState(data)
+function UserData({keyValue, values, setUsers}){
 
 	return(
-		<div className="user-list">
-			{
-				userData.map((category, i) => {
-					return (<ListCategory name={category.identifier} data={category.values} key={i}></ListCategory>)
-				})
-			}
-		</div>
-	)
-}
-
-function ListCategory({name, data}){
-		return(
 		<div className="data-category">
-			<div className="data-labeling">
-				<label className='category-label' htmlFor="search-box">{name}</label>
+
+			<div className="category-names">
+				{ keyValue.map((key, i) => <div className="category-container" key={i}><label className='category-label' htmlFor="">{key}</label></div>) }
+				<div className="category-container-delete"></div>
 			</div>
-			<ul className='list-category'>
+
+	 		<ul className='data-list'>
 				{
-					data.map((value, i) => {
-						return(<li className='list-category-item' key={i}><ListItem data={value}></ListItem></li>)
-					})
+					values.map((value, i) => <li className='data-list-field' key={i}><UserItem values={value}></UserItem></li>)
 				}
-			
-			</ul>
+ 			</ul>
 		</div>
 	)
 }
 
-function ListItem({data}){
-	return(
-		<div className="list-item">{data}</div>
+function UserItem({values, setUsers}){	
+	return (
+		<div className="list-item">
+			{ 
+				values.map((value, i) =>
+					<div key={i} className="item-element">
+						<label htmlFor="">{value}</label>
+					</div>
+				) 
+			}
+			<button htmlFor="" className='user-delete'>Delete</button>
+		</div>
 	)
 }
 
