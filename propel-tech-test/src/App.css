@@ -84,6 +84,12 @@ button.user-delete{
   border: none;
 }
 
+.empty-set-message{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 div.content{
   display: block;
   background-color: white;
