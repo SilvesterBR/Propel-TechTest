@@ -33,7 +33,6 @@ const testData = [
 function App() {
 
 	const defaultUsers = testData;
-	const [searchValue, setSearchValue] = useState("")
 	const [users, setUsers] = useState(testData)
 
 	return (
@@ -53,15 +52,26 @@ function App() {
 					<UserData 
 						keyValue={["Name", "Email"]} 
 						values={users.map(user => [`${user.first_name[0]}.${user.last_name}`, user.email])} 
-						searchTerm={searchValue}
+						setValues={setUsers}
 					/>
+					{
+						users.length <= 0 && (
+							<div className='empty-set-message'>
+								<h2>No users found</h2>
+							</div>
+						)
+					}
 				</div>
 			</div>
 		</div>
 	);
 }
 
-function UserData({keyValue, values, setUsers}){
+function UserData({keyValue, values, setValues}){
+
+	const deleteValue = (index) => {
+		setValues(prev => prev.filter((_, i) => i !== index))
+	}
 
 	return(
 		<div className="data-category">
@@ -73,14 +83,14 @@ function UserData({keyValue, values, setUsers}){
 
 	 		<ul className='data-list'>
 				{
-					values.map((value, i) => <li className='data-list-field' key={i}><UserItem values={value}></UserItem></li>)
+					values.map((value, i) => <li className='data-list-field' key={i}><UserItem values={value} onDelete={()=>deleteValue(i)}></UserItem></li>)
 				}
  			</ul>
 		</div>
 	)
 }
 
-function UserItem({values, setUsers}){	
+function UserItem({values, onDelete}){	
 	return (
 		<div className="list-item">
 			{ 
@@ -90,7 +100,7 @@ function UserItem({values, setUsers}){
 					</div>
 				) 
 			}
-			<button htmlFor="" className='user-delete'>Delete</button>
+			<button htmlFor="" className='user-delete' onClick={onDelete}>Delete</button>
 		</div>
 	)
 }
