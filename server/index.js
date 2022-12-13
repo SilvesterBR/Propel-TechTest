@@ -31,76 +31,131 @@ var testData = [
 		"email": "steve.mcdonald@corrie.co.uk"
 	}
 ]
-app.use(bodyParser.json())
 
-app.get('/users', (req, res) => {
-    res.status(200).json({
-        users: testData
-    })
-});
-app.get('/users/:id', (req, res) => {
-    const id = req.params.id;
-
-    res.status  (500).json({
-        status: 500,
-        message: "Database nonoperational."
-    })
-});
-app.get('/users/:firstname/:lastname', (req, res) => {
-    const {firstname , lastname} = req.params
-    const user = testData.find(user => user.first_name == firstname && user.last_name == lastname)
-
-    if(!user) return res.status(404).json({
-        status: 404,
-        message: "User not found"
-    })
-
-    res.status(200).json({
-        user
-    })
-
-});
-
-app.post('/users', (req, res) => {
-
-    const {first_name, last_name, phone, email} = req.body;
-    const user = {first_name, last_name, phone, email}
-    const errors = [];
-    for (let field in user) {
-        if(!user[field]) errors.push(field)
+class UserDatabase{
+    constructor(users = []){
+        this.users = users.map((user, i) => (new User({...user, id: i})));
     }
 
-    if(errors.length) return res.status(403).json({
-        status: 403,
-        message: "Invalid details",
-        details: "Fields: " + errors.toString()
-    })
+    DeleteUser(id){
+        if(!this.GetUser(id)) throw { status: 404, message: "User not found" }
+        this.users = this.users.filter(user => user.id != id);
+        return { status: 200, message: "User deleted successfully." }
+    }
 
-    res.status(200).json();
+    /**@returns {User} */
+    GetUser(id){
+        const user = this.users.find(user => user.id == id)
+        return user;
+        
+    }
 
-})
+    AddUser(user){
+        if((user instanceof User) == false) throw "user must be of type new User()"
+        const id = this.GetNewId()
+        user.SetId(id)
+        this.users.push(user)
+    }
 
-app.delete('/users/:id', (req, res) => {
-    const id = req.params.id;
-    res.status(500).json({
-        status: 500,
-        message: "Database nonoperational."
-    })
-})
+    GetNewId(){
+        return Math.max(...this.users.map(user => user.id)) + 1
+    }
+}
 
-app.delete('/users/:firstname/:lastname', (req,res) => {
+class UsersAPI{
+    constructor(app, database, options){
+        this.app = app;
+        this.port = options.port;
+        /**@type {UserDatabase} */
+        this.database = database;
+    }
 
-    //NOTE: Not a good idea to delete by first and last name but shows the idea of how to delete
-    const {firstname , lastname} = req.params
-    const user = testData.find(user => user.first_name == firstname && user.last_name == lastname)
-    
-    if(!user) return res.status(404).json({
-        status: 404,
-        message: "User not found"
-    })
-    testData = testData.filter(user => user.first_name != firstname && user.last_name != lastname)
-    res.status(200).json();
+    init(){
+        this.app.use(bodyParser.json())
 
-})
+        this.HttpGet();
+        this.HttpDelete();
+        this.HttpPost();
 
-app.listen(port, () => console.log(`Listening on port ${port}`))
+        this.app.listen(this.port, () => console.log(`Listening on port ${port}`))
+    }
+
+    HttpGet(){
+        this.app.get('/users', (req, res) => {
+            res.status(200).json(database.users)
+        });
+        this.app.get('/users/:id', (req, res) => {
+            const id = req.params.id;
+
+            const user = this.database.GetUser(id)
+            if(!user) return res.status(500).json({ status: 404, message: "User not found" })
+            res.status(200).json(user.toJSON())
+
+        });
+    }
+
+    HttpPost(){
+        this.app.post('/users', (req, res) => {
+
+            const {first_name, last_name, phone, email} = req.body;
+            const user = {first_name, last_name, phone, email}
+            const errors = [];
+            for (let field in user) {
+                if(!user[field]) errors.push(field)
+            }
+
+            if(errors.length) return res.status(403).json({
+                status: 403,
+                message: "Invalid details",
+                details: "Fields: " + errors.toString()
+            })
+
+            this.database.AddUser(new User({first_name, last_name, phone, email}))
+
+            res.status(200).json();
+
+        })
+    }
+
+    HttpDelete(){
+        this.app.delete('/users/:id', (req, res) => {
+            const id = req.params.id;
+            try {
+                const response = database.DeleteUser(id)
+                res.status(200).json(response)
+            } catch (error) {                
+                res.status(500).json(error)
+            }    
+        })
+    }
+}
+
+class User{
+    constructor({id, first_name, last_name, phone, email}){
+        this.id = id;
+        this.first_name = first_name;
+        this.last_name = last_name;
+        this.phone = phone;
+        this.email = email;
+    }
+
+    SetId(id){
+        this.id = id;
+    }
+    toJSON(){
+        return(
+            {
+                id: this.id,
+                first_name: this.first_name,
+                last_name: this.last_name,
+                phone: this.phone,
+                email: this.email,
+            }
+        )
+    }
+}
+
+const database = new UserDatabase(testData.map(user => new User(user)));
+new UsersAPI(app, database ,{
+    port: port
+}).init()
